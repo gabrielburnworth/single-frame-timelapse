@@ -15,9 +15,8 @@ Run the script: `python single-frame-timelapse.py`
 
 __Alternatively, use a python command line:__
 
-
 ```python
-from single-frame-timelapse import SFTL
+from single_frame_timelapse import SFTL
 help(SFTL)
 SFTL(stills='frames')
 SFTL(video='car.avi', slice=0.75, stretch=2)
