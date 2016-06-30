@@ -20,6 +20,7 @@ def SFTL(**kwargs):
             so that the entire video length is represented in the
             output image if the video length is long.
         The youtube option assumes an 720p mp4 is available to download.
+        The stills option assumes each frame is named "frame_####.png"
     
     Arguments:
         Input (choose one of three):
@@ -119,7 +120,7 @@ def SFTL(**kwargs):
         frame_count = len([name for name in os.listdir(stills)
                if os.path.isfile(os.path.join(stills, name))])
         for i in range(0, frame_count):
-            frame = cv2.imread(stills + "/frame_{:02d}.png".format(i))
+            frame = cv2.imread(stills + "/frame_{:04d}.png".format(i))
             TL = add_slice(TL, frame_count, i, frame)
         save(TL)
 
@@ -145,7 +146,7 @@ def SFTL(**kwargs):
         yt = YouTube(youtube)
         video = yt.filename + '.mp4'
         if debug: print yt.get_videos()
-        video_to_dl = yt.get('mp4', '360p')
+        video_to_dl = yt.get('mp4', '720p')
         try:
             open(video)
         except IOError:
