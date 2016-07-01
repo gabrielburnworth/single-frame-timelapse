@@ -20,7 +20,8 @@ def SFTL(**kwargs):
             so that the entire video length is represented in the
             output image if the video length is long.
         The youtube option assumes an 720p mp4 is available to download.
-        The stills option assumes each frame is named "frame_####.png"
+        The stills option assumes each frame is named "frame_####.png",
+            starting with "frame_0000.png".
     
     Arguments:
         Input (choose one of three):
