@@ -6,6 +6,7 @@ and condensing it into a single image.
 import cv2
 import numpy as np
 import os, os.path
+import sys
 
 def SFTL(**kwargs):
     """Create a timelapse photo.
@@ -39,6 +40,10 @@ def SFTL(**kwargs):
                     'full' to reverse at end.
             stretch: Stretch the time period shown over a smaller
                      or larger width.
+            fixedwidth: (Default = False) Use fixedwidth=True to attempt
+                        to keep the aspect ratio of the original image.
+                        Otherwise, a large number of input frames will
+                        create a very wide image.
 
         debug: Output debug info.
 
@@ -56,6 +61,7 @@ def SFTL(**kwargs):
     slice = None
     mirror = None
     stretch = None
+    fixedwidth = False
     debug = False
     for key in kwargs:
         if key == 'slice': slice = kwargs[key]
@@ -64,13 +70,15 @@ def SFTL(**kwargs):
         if key == 'video': video = kwargs[key]
         if key == 'youtube': youtube = kwargs[key]
         if key == 'stretch': stretch = kwargs[key]
+        if key == 'fixedwidth': fixedwidth = kwargs[key]
         if key == 'debug': debug = kwargs[key]
 
     def add(img1, img2):
         img = np.concatenate((img1, img2), axis=1)
         return img
 
-    def add_slice(TL, frame_count, i, frame):
+    def add_slice(TLP, frame_count, i, frame):
+        # Determine slice location and width
         y, x, o = frame.shape
         if slice is not None:
             left = int(slice * x)
@@ -90,17 +98,32 @@ def SFTL(**kwargs):
             right = left + int(slice_width * stretch)
         else:
             right = left + slice_width
+
         if i == 0:
-            TL = frame[:, 0:0]
-        TL = add(TL, frame[:, left:right])
+            TLP = frame[:, 0:0]
+
+        # Fixed width option processing
+        new_slice_width = right - left
+        final_width = new_slice_width * frame_count
+        if final_width > x and fixedwidth and new_slice_width == 1:
+            k = int(frame_count / x)
+            if i % k != 0:
+                return TLP
+        elif fixedwidth:
+            add_stretch = x / (new_slice_width * frame_count)
+            right = left + int(new_slice_width * add_stretch)
+
+        TLP = add(TLP, frame[:, left:right])
+
         if debug:
             print '{}/{} s={},{},{} {}'.format(i, 
-             frame_count, slice_width, left, right, TL.shape)
-        return TL
+             frame_count, slice_width, left, right, TLP.shape)
 
-    def save(TL):
+        return TLP
+
+    def save(TLP):
         if mirror is not None:
-            TL = add(TL, cv2.flip(TL, 1))
+            TLP = add(TLP, cv2.flip(TLP, 1))
 
         filename = "SFTL"
         if stills is not None:
@@ -113,30 +136,47 @@ def SFTL(**kwargs):
             filename += "_{}-mirror".format(mirror_method)
         if stretch is not None:
             filename += "_stretch={}".format(stretch)
+        if fixedwidth:
+            filename += "_fixedwidth"
         filename += ".png"
-        cv2.imwrite(filename, TL)
+        cv2.imwrite(filename, TLP)
 
     def process_stills():
-        TL = None
+        TLP = None
         frame_count = len([name for name in os.listdir(stills)
                if os.path.isfile(os.path.join(stills, name))])
+        print "{} still images to include from '{}'.".format(frame_count, stills)
         for i in range(0, frame_count):
-            frame = cv2.imread(stills + "/frame_{:04d}.png".format(i))
-            TL = add_slice(TL, frame_count, i, frame)
-        save(TL)
+            filename =  stills + "/frame_{:04d}.jpg".format(i)
+            sys.stdout.write('\rProcessing file: {}'.format(filename))
+            sys.stdout.flush()
+            frame = cv2.imread(filename)
+            TLP = add_slice(TLP, frame_count, i, frame)
+        save(TLP)
 
     def process_video():
-        TL = None
+        TLP = None
         video_input = cv2.VideoCapture(video)
         frame_count = video_input.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
+        print "{} frames to include from '{}'.".format(frame_count, video)
         i = 0
         while video_input.isOpened():
+            sys.stdout.write('\rProcessing frame: {}'.format(i))
+            sys.stdout.flush()
             ret, frame = video_input.read()
             if not ret: break
-            TL = add_slice(TL, frame_count, i, frame)
+            TLP = add_slice(TLP, frame_count, i, frame)
             i += 1
         video_input.release()
-        save(TL)
+        save(TLP)
+
+    print '-' * 30
+    if any(option is not None for option in [slice, mirror, stretch]):
+        print "Processing options:"
+        if slice is not None: print "  Slice = {}".format(slice)
+        if mirror is not None: print "  Mirror = {}".format(mirror)
+        if stretch is not None: print "  Stretch = {}".format(stretch)
+        if fixedwidth: print "  Fixed Width = True"
 
     if stills is not None:
         process_stills()
@@ -157,6 +197,7 @@ def SFTL(**kwargs):
         print "Please input either stills='frames', " + \
               "video='name.avi', or youtube='<url>'.\n" + \
               "View help(SFTL) for more information."
+    print '\n' + '-' * 30
 
 if __name__ == "__main__":
     SFTL()
