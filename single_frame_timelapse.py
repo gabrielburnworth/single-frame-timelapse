@@ -171,7 +171,8 @@ def SFTL(**kwargs):
         save(TLP)
 
     print '-' * 30
-    if any(option is not None for option in [slice, mirror, stretch]):
+    options = [slice, mirror, stretch]
+    if any(option is not None for option in options) or fixedwidth == True:
         print "Processing options:"
         if slice is not None: print "  Slice = {}".format(slice)
         if mirror is not None: print "  Mirror = {}".format(mirror)
