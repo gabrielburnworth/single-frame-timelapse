@@ -1,0 +1,6 @@
+*
+!frames/
+!.gitignore
+!README.md
+!car.avi
+!single_frame_timelapse.py
